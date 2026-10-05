@@ -1,0 +1,29 @@
+import { Space_Grotesk, Inter } from "next/font/google";
+import "./globals.css";
+
+const displayFont = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space-grotesk", // ← renamed
+  weight: ["400", "500", "600", "700"],
+});
+
+const bodyFont = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter", // ← renamed
+  weight: ["400", "500", "600"],
+});
+
+export const metadata = {
+  title: "DropZone — Streetwear Drops",
+  description: "Limited drops, unlimited style.",
+};
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en" className={`${displayFont.variable} ${bodyFont.variable}`}>
+      <body className="font-body bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100 antialiased">
+        {children}
+      </body>
+    </html>
+  );
+}
