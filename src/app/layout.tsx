@@ -19,10 +19,13 @@ export const metadata = {
   description: "Limited drops, unlimited style.",
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ any: children }) {
   return (
     <html lang="en" className={`${displayFont.variable} ${bodyFont.variable}`}>
-      <body className="font-body bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100 antialiased">
+      <body
+        suppressHydrationWarning
+        className="font-body bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100 antialiased"
+      >
         <StoreInitializer />
         {children}
       </body>
