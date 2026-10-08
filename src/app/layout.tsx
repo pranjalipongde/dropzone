@@ -4,13 +4,13 @@ import StoreInitializer from "@/components/ui/StoreInitializer";
 
 const displayFont = Space_Grotesk({
   subsets: ["latin"],
-  variable: "--font-space-grotesk", // ← renamed
+  variable: "--font-space-grotesk",
   weight: ["400", "500", "600", "700"],
 });
 
 const bodyFont = Inter({
   subsets: ["latin"],
-  variable: "--font-inter", // ← renamed
+  variable: "--font-inter",
   weight: ["400", "500", "600"],
 });
 
@@ -19,7 +19,11 @@ export const metadata = {
   description: "Limited drops, unlimited style.",
 };
 
-export default function RootLayout({ any: children }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" className={`${displayFont.variable} ${bodyFont.variable}`}>
       <body

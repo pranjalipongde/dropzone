@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// ── Helpers ──────────────────────────────────────────────────────
+// Helpers
 function slugify(text) {
   return text
     .toLowerCase()
@@ -10,7 +10,7 @@ function slugify(text) {
     .replace(/(^-|-$)/g, "");
 }
 
-// ── Categories we'll create ───────────────────────────────────────
+//  Categories we'll create
 const CATEGORIES = [
   { name: "Sneakers", slug: "sneakers" },
   { name: "Hoodies", slug: "hoodies" },
@@ -18,7 +18,7 @@ const CATEGORIES = [
   { name: "Accessories", slug: "accessories" },
 ];
 
-// ── Main seed function ────────────────────────────────────────────
+// ── Main seed function
 async function main() {
   console.log("🌱 Seeding database...");
 
