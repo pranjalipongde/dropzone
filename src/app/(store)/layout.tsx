@@ -14,7 +14,7 @@ export default function StoreLayout({ children }) {
       {/* ── Footer stub — replaced later ── */}
       <footer className="h-16 border-t border-neutral-200 dark:border-neutral-800 flex items-center justify-center">
         <span className="text-sm text-neutral-400">
-          © 2025 DropZone. All rights reserved.
+          © 2026 DropZone. All rights reserved.
         </span>
       </footer>
     </div>
