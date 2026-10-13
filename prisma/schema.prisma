@@ -43,6 +43,7 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  accounts      Account[] 
   orders        Order[]
   reviews       Review[]
   cartItems     CartItem[]
@@ -203,4 +204,47 @@ model WishlistItem {
   @@unique([userId, productId])
   @@index([userId])
   @@map("wishlist_items")
+}
+
+// ─────────────────────────────────────────────
+// ACCOUNT
+// Stores OAuth provider connections per user.
+// When someone logs in with Google, a row is
+// created here linking their Google account
+// to their User row.
+// ─────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+// ─────────────────────────────────────────────
+// VERIFICATION TOKEN
+// Used for email verification and
+// password reset magic links
+// ─────────────────────────────────────────────
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
 }
