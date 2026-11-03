@@ -1,8 +1,8 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-// Helpers
 function slugify(text) {
   return text
     .toLowerCase()
@@ -10,19 +10,35 @@ function slugify(text) {
     .replace(/(^-|-$)/g, "");
 }
 
-//  Categories we'll create
-const CATEGORIES = [
-  { name: "Sneakers", slug: "sneakers" },
-  { name: "Hoodies", slug: "hoodies" },
-  { name: "Tees", slug: "tees" },
-  { name: "Accessories", slug: "accessories" },
+// Our store categories, and which DummyJSON categories feed each one
+const STORE_CATEGORIES = [
+  {
+    name: "Sneakers",
+    slug: "sneakers",
+    source: ["mens-shoes", "womens-shoes"],
+  },
+  {
+    name: "Apparel",
+    slug: "apparel",
+    source: ["mens-shirts", "tops", "womens-dresses"],
+  },
+  {
+    name: "Watches",
+    slug: "watches",
+    source: ["mens-watches", "womens-watches"],
+  },
+  {
+    name: "Accessories",
+    slug: "accessories",
+    source: ["sunglasses", "womens-bags", "womens-jewellery"],
+  },
 ];
 
-// ── Main seed function
 async function main() {
   console.log("🌱 Seeding database...");
 
-  // 1. Clean existing data (order matters due to foreign keys)
+  // 1. Clear store data. Users are NOT deleted, so your accounts survive.
+  //    Order matters because of foreign keys (children before parents).
   await prisma.wishlistItem.deleteMany();
   await prisma.cartItem.deleteMany();
   await prisma.orderItem.deleteMany();
@@ -30,84 +46,77 @@ async function main() {
   await prisma.review.deleteMany();
   await prisma.product.deleteMany();
   await prisma.category.deleteMany();
-  await prisma.user.deleteMany();
-  console.log("✓ Cleared existing data");
+  console.log("✓ Cleared products and categories");
 
-  // 2. Create categories
-  const categories = await Promise.all(
-    CATEGORIES.map((cat) => prisma.category.create({ data: cat })),
-  );
-  console.log(`✓ Created ${categories.length} categories`);
+  // 2. Create categories, then fetch products for each
+  const allCreated = [];
 
-  // 3. Fetch products from DummyJSON
-  const res = await fetch("https://dummyjson.com/products?limit=40&skip=0");
-  const data = await res.json();
-  const rawProducts = data.products;
-  console.log(`✓ Fetched ${rawProducts.length} products from DummyJSON`);
-
-  // 4. Map DummyJSON products to our schema and insert
-  const createdProducts = [];
-
-  for (const p of rawProducts) {
-    // Assign category based on DummyJSON's category field
-    const categoryMap = {
-      "mens-shirts": "tees",
-      "womens-dresses": "tees",
-      "mens-shoes": "sneakers",
-      "womens-shoes": "sneakers",
-      "mens-watches": "accessories",
-      "womens-watches": "accessories",
-      "womens-bags": "accessories",
-      "womens-jewellery": "accessories",
-      sunglasses: "accessories",
-      tops: "tees",
-    };
-
-    const targetSlug = categoryMap[p.category] ?? "accessories";
-    const category = categories.find((c) => c.slug === targetSlug);
-
-    // Make slug unique by appending the DummyJSON id
-    const slug = `${slugify(p.title)}-${p.id}`;
-
-    const product = await prisma.product.create({
-      data: {
-        name: p.title,
-        slug,
-        description: p.description,
-        price: p.price,
-        stock: p.stock ?? Math.floor(Math.random() * 50) + 5,
-        images: p.images ?? [p.thumbnail],
-        isFeatured: p.rating > 4.5, // high-rated products become featured drops
-        categoryId: category.id,
-      },
+  for (const cat of STORE_CATEGORIES) {
+    const category = await prisma.category.create({
+      data: { name: cat.name, slug: cat.slug },
     });
 
-    createdProducts.push(product);
+    for (const source of cat.source) {
+      const res = await fetch(
+        `https://dummyjson.com/products/category/${source}`,
+      );
+      const { products = [] } = await res.json();
+      console.log(`  ${source}: ${products.length} products`);
+
+      for (const p of products) {
+        const product = await prisma.product.create({
+          data: {
+            name: p.title,
+            slug: `${slugify(p.title)}-${p.id}`,
+            description: p.description,
+            price: p.price,
+            stock: p.stock ?? 20,
+            images: p.images?.length ? p.images : [p.thumbnail],
+            categoryId: category.id,
+          },
+        });
+        allCreated.push({ id: product.id, rating: p.rating ?? 0 });
+      }
+    }
   }
+  console.log(`✓ Created ${allCreated.length} products`);
 
-  console.log(`✓ Created ${createdProducts.length} products`);
+  // 3. Feature the 8 highest-rated products on the homepage
+  const featured = [...allCreated]
+    .sort((a, b) => b.rating - a.rating)
+    .slice(0, 8);
+  await prisma.product.updateMany({
+    where: { id: { in: featured.map((f) => f.id) } },
+    data: { isFeatured: true },
+  });
+  console.log(`✓ Marked ${featured.length} products as featured`);
 
-  // 5. Create an admin user for testing the admin panel
-  const admin = await prisma.user.create({
-    data: {
+  // 4. Test users with REAL bcrypt hashes. upsert = create if missing,
+  //    update if it already exists, so re-running never crashes.
+  const users = [
+    {
       name: "Admin",
       email: "admin@dropzone.com",
-      passwordHash: "placeholder", // replaced with real hash in Module 3
+      password: "Admin@123",
       role: "ADMIN",
     },
-  });
-  console.log(`✓ Created admin user: ${admin.email}`);
-
-  // 6. Create a test customer
-  const customer = await prisma.user.create({
-    data: {
+    {
       name: "Test Customer",
       email: "customer@dropzone.com",
-      passwordHash: "placeholder",
+      password: "Customer@123",
       role: "CUSTOMER",
     },
-  });
-  console.log(`✓ Created test customer: ${customer.email}`);
+  ];
+
+  for (const u of users) {
+    const passwordHash = await bcrypt.hash(u.password, 12);
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: { passwordHash, role: u.role },
+      create: { name: u.name, email: u.email, passwordHash, role: u.role },
+    });
+  }
+  console.log("✓ Test users ready");
 
   console.log("\n✅ Database seeded successfully!");
 }
