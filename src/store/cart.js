@@ -6,19 +6,22 @@ export const useCartStore = create(
     (set, get) => ({
       items: [], // { id, name, price, image, slug, quantity }
 
-      // Add product — if already in cart, just increase quantity
-      addItem: (product) => {
+      // Add product. Optional quantity defaults to 1, so existing
+      // callers like ProductCard keep working without changes.
+      addItem: (product, quantity = 1) => {
         const { items } = get();
         const existing = items.find((i) => i.id === product.id);
 
         if (existing) {
           set({
             items: items.map((i) =>
-              i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i,
+              i.id === product.id
+                ? { ...i, quantity: i.quantity + quantity }
+                : i,
             ),
           });
         } else {
-          set({ items: [...items, { ...product, quantity: 1 }] });
+          set({ items: [...items, { ...product, quantity }] });
         }
       },
 
